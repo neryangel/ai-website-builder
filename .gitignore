@@ -1,0 +1,23 @@
+# Virtual environments
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+
+# Projects data (generated at runtime)
+projects/
+
+# OS
+.DS_Store
+Thumbs.db
