@@ -7,6 +7,7 @@ Configuration sidebar with API keys, model selection, and template picker.
 import os
 import streamlit as st
 from config import PROVIDERS, TEMPLATES, AGENT_DEFINITIONS
+from agents.copywriter import SUPPORTED_LANGUAGES
 
 
 def render_sidebar() -> dict:
@@ -46,6 +47,19 @@ def render_sidebar() -> dict:
 
         st.markdown("---")
 
+        # ── Language ──
+        st.markdown("## 🌍 Language")
+        lang_options = {k: v["name"] for k, v in SUPPORTED_LANGUAGES.items()}
+        selected_language = st.selectbox(
+            "Output language",
+            options=list(lang_options.keys()),
+            format_func=lambda x: f"{lang_options[x]} {'(RTL)' if SUPPORTED_LANGUAGES[x]['dir'] == 'rtl' else ''}",
+            index=0,
+            label_visibility="collapsed",
+        )
+
+        st.markdown("---")
+
         # ── Template Selection ──
         st.markdown("## 🎨 Website Template")
         template_options = {k: v["name"] for k, v in TEMPLATES.items()}
@@ -61,8 +75,12 @@ def render_sidebar() -> dict:
 
         st.markdown("---")
 
+        # ── Quick / Advanced Mode ──
+        advanced_mode = st.toggle("🔧 Advanced Mode", value=False, help="Show per-agent model configuration")
+
         # ── Agent Models ──
-        st.markdown("## 🤖 Agent Models")
+        if advanced_mode:
+            st.markdown("## 🤖 Agent Models")
 
         def model_selector(label: str, key_prefix: str):
             col1, col2 = st.columns(2)
@@ -85,14 +103,28 @@ def render_sidebar() -> dict:
 
         agents_config = {}
         for agent_name, agent_def in AGENT_DEFINITIONS.items():
-            st.markdown(f"**{agent_def['icon']} {agent_name}**")
-            key_prefix = agent_name.lower().replace(" ", "_")
-            provider, model = model_selector(agent_name, key_prefix)
-            agents_config[agent_name] = {
-                "provider": provider,
-                "model": model,
-                "api_key": api_keys.get(provider, ""),
-            }
+            if advanced_mode:
+                st.markdown(f"**{agent_def['icon']} {agent_name}**")
+                key_prefix = agent_name.lower().replace(" ", "_")
+                provider, model = model_selector(agent_name, key_prefix)
+                agents_config[agent_name] = {
+                    "provider": provider,
+                    "model": model,
+                    "api_key": api_keys.get(provider, ""),
+                }
+            else:
+                # Quick mode: use first available API key's provider
+                default_provider = "Gemini"  # sensible default
+                for p, k in api_keys.items():
+                    if k:
+                        default_provider = p
+                        break
+                default_model = PROVIDERS[default_provider][0]
+                agents_config[agent_name] = {
+                    "provider": default_provider,
+                    "model": default_model,
+                    "api_key": api_keys.get(default_provider, ""),
+                }
 
         st.markdown("---")
 
@@ -125,6 +157,7 @@ def render_sidebar() -> dict:
             "api_keys": api_keys,
             "agents": agents_config,
             "template": selected_template,
+            "language": selected_language,
             "auto_fix": auto_fix,
             "seo_optimize": seo_optimize,
         }

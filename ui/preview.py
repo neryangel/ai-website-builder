@@ -156,9 +156,33 @@ def render_color_palette(design_json: dict):
 
 
 def render_live_preview(html_code: str):
-    """Render the live HTML preview."""
+    """Render the live HTML preview with device toggle."""
     st.markdown("### 👁️ Live Preview")
-    st.components.v1.html(html_code, height=800, scrolling=True)
+
+    # Device toggle
+    device = st.radio(
+        "Preview device",
+        ["🖥️ Desktop", "📱 Tablet", "📱 Mobile"],
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+
+    device_widths = {
+        "🖥️ Desktop": "100%",
+        "📱 Tablet": "768px",
+        "📱 Mobile": "375px",
+    }
+    width = device_widths[device]
+    height = 800 if device == "🖥️ Desktop" else 900
+
+    # Center the preview with selected width
+    st.markdown(
+        f'<div style="margin:0 auto;max-width:{width};border:1px solid #e2e8f0;'
+        f'border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">',
+        unsafe_allow_html=True,
+    )
+    st.components.v1.html(html_code, height=height, scrolling=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_download_section(html_code: str):

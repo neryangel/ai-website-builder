@@ -143,5 +143,22 @@ Build the complete HTML landing page now. Remember to use the EXACT colors and f
 Use real Unsplash image URLs that match the business context.
 The design must be STUNNING — think Framer-level or Dribbble-worthy quality.
 """
+
+        # Multi-language / RTL support
+        language = kwargs.get("language", "en")
+        if language != "en":
+            from agents.copywriter import SUPPORTED_LANGUAGES
+            lang_info = SUPPORTED_LANGUAGES.get(language, SUPPORTED_LANGUAGES["en"])
+            prompt += f"""
+LANGUAGE REQUIREMENTS:
+- Set <html lang="{language}" dir="{lang_info['dir']}">
+- All text content MUST be in {lang_info['name']}
+"""
+            if lang_info["dir"] == "rtl":
+                prompt += """- Use RTL-compatible layout: swap left/right padding, margins, and text-align
+- Use Google Fonts that support the target language characters
+- Mirror navigation: logo on right, menu items flow right-to-left
+"""
+
         return prompt
 

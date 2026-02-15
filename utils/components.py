@@ -406,6 +406,129 @@ COMPONENTS = {
   </div>
 </section>""",
     },
+
+    # ─────────────────────────────────────
+    # Blog / News
+    # ─────────────────────────────────────
+    "blog_cards": {
+        "name": "Blog — Card Grid",
+        "description": "Three blog post cards with image, date, title, excerpt, and read more link",
+        "sections": ["blog"],
+        "html_hint": """
+<section class="py-24">
+  <div class="max-w-7xl mx-auto px-6">
+    <h2 class="text-4xl font-bold text-center mb-4">Latest Articles</h2>
+    <p class="text-center text-gray-600 mb-16">Insights, tips, and industry news</p>
+    <div class="grid md:grid-cols-3 gap-8">
+      <article class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow group">
+        <div class="overflow-hidden">
+          <img src="..." class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500" alt="...">
+        </div>
+        <div class="p-6">
+          <span class="text-sm text-{primary} font-semibold">Category</span>
+          <span class="text-sm text-gray-400 ml-2">Jan 15, 2026</span>
+          <h3 class="text-xl font-bold mt-2 mb-3">{post_title}</h3>
+          <p class="text-gray-600 mb-4">{post_excerpt}</p>
+          <a href="#" class="text-{primary} font-semibold hover:underline inline-flex items-center gap-1">
+            Read More <span>→</span>
+          </a>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>""",
+    },
+
+    # ─────────────────────────────────────
+    # Video Hero
+    # ─────────────────────────────────────
+    "hero_video": {
+        "name": "Hero — Video Background",
+        "description": "Full-screen hero with looping background video, dark overlay, and centered CTA",
+        "sections": ["hero"],
+        "html_hint": """
+<section class="relative min-h-screen flex items-center justify-center overflow-hidden">
+  <video autoplay muted loop playsinline class="absolute inset-0 w-full h-full object-cover">
+    <source src="..." type="video/mp4">
+  </video>
+  <div class="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/70"></div>
+  <div class="relative z-10 text-center text-white max-w-4xl mx-auto px-6">
+    <h1 class="text-5xl md:text-7xl font-bold mb-6 leading-tight">{headline}</h1>
+    <p class="text-xl md:text-2xl mb-10 opacity-90 max-w-2xl mx-auto">{subheadline}</p>
+    <div class="flex gap-4 justify-center">
+      <a href="#" class="px-10 py-4 bg-{primary} rounded-full text-lg font-semibold 
+         hover:scale-105 transition-transform shadow-xl">{cta_text}</a>
+      <a href="#" class="px-10 py-4 border-2 border-white rounded-full text-lg font-semibold
+         hover:bg-white/10 transition-colors">Watch Demo</a>
+    </div>
+  </div>
+</section>""",
+    },
+
+    # ─────────────────────────────────────
+    # Logo Cloud / Partners
+    # ─────────────────────────────────────
+    "logo_cloud": {
+        "name": "Logo Cloud — Trusted By",
+        "description": "Row of partner/client logos with 'Trusted By' heading and grayscale hover effect",
+        "sections": ["logos", "partners"],
+        "html_hint": """
+<section class="py-16 border-y border-gray-100">
+  <div class="max-w-7xl mx-auto px-6">
+    <p class="text-center text-gray-400 uppercase tracking-wider text-sm font-semibold mb-10">
+      Trusted by leading companies
+    </p>
+    <div class="flex flex-wrap justify-center items-center gap-12 md:gap-16">
+      <img src="..." class="h-8 md:h-10 grayscale opacity-40 hover:grayscale-0 hover:opacity-100 
+           transition-all duration-300" alt="Partner 1">
+      <img src="..." class="h-8 md:h-10 grayscale opacity-40 hover:grayscale-0 hover:opacity-100 
+           transition-all duration-300" alt="Partner 2">
+      <img src="..." class="h-8 md:h-10 grayscale opacity-40 hover:grayscale-0 hover:opacity-100 
+           transition-all duration-300" alt="Partner 3">
+      <img src="..." class="h-8 md:h-10 grayscale opacity-40 hover:grayscale-0 hover:opacity-100 
+           transition-all duration-300" alt="Partner 4">
+      <img src="..." class="h-8 md:h-10 grayscale opacity-40 hover:grayscale-0 hover:opacity-100 
+           transition-all duration-300" alt="Partner 5">
+    </div>
+  </div>
+</section>""",
+    },
+
+    # ─────────────────────────────────────
+    # Comparison Table
+    # ─────────────────────────────────────
+    "comparison_table": {
+        "name": "Comparison — Feature Table",
+        "description": "Side-by-side comparison table highlighting your product vs competitors",
+        "sections": ["comparison", "features"],
+        "html_hint": """
+<section class="py-24 bg-{surface}">
+  <div class="max-w-5xl mx-auto px-6">
+    <h2 class="text-4xl font-bold text-center mb-4">Why Choose Us</h2>
+    <p class="text-center text-gray-600 mb-16">See how we compare</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left">
+        <thead>
+          <tr class="border-b-2 border-gray-200">
+            <th class="py-4 px-6 font-semibold text-gray-500">Feature</th>
+            <th class="py-4 px-6 font-bold text-{primary} bg-{primary}/5 rounded-t-xl">Our Product</th>
+            <th class="py-4 px-6 font-semibold text-gray-500">Competitor A</th>
+            <th class="py-4 px-6 font-semibold text-gray-500">Competitor B</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <tr>
+            <td class="py-4 px-6 font-medium">{feature_name}</td>
+            <td class="py-4 px-6 bg-{primary}/5 text-green-600 font-semibold">✓</td>
+            <td class="py-4 px-6 text-red-400">✗</td>
+            <td class="py-4 px-6 text-gray-400">Partial</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>""",
+    },
 }
 
 

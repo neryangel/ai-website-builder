@@ -398,15 +398,29 @@ def main():
         status_container = st.container()
         status_placeholders = {}
         with status_container:
+            progress_bar = st.progress(0, text="Initializing pipeline...")
             for agent_name in AGENT_DEFINITIONS:
                 status_placeholders[agent_name] = st.empty()
                 with status_placeholders[agent_name]:
                     render_agent_status(agent_name, "waiting")
 
+        # Track progress
+        agent_list = list(AGENT_DEFINITIONS.keys())
+        total_stages = len(agent_list)
+
         def on_stage_update(name: str, status: str):
             if name in status_placeholders:
                 with status_placeholders[name]:
                     render_agent_status(name, status)
+            # Update progress bar
+            if status == "running":
+                idx = agent_list.index(name) if name in agent_list else 0
+                pct = int((idx / total_stages) * 100)
+                progress_bar.progress(pct, text=f"🔄 {name} working...")
+            elif status == "done":
+                idx = agent_list.index(name) + 1 if name in agent_list else 0
+                pct = int((idx / total_stages) * 100)
+                progress_bar.progress(pct, text=f"✅ {name} complete")
 
         pipeline = BuildPipeline(
             agent_configs=config["agents"],
@@ -418,6 +432,8 @@ def main():
 
         with st.spinner("🚀 Building your website with AI agents..."):
             result = pipeline.run(business_desc)
+
+        progress_bar.progress(100, text="✅ Build complete!")
 
         if not result.success:
             st.error(f"❌ Pipeline failed: {result.error}")

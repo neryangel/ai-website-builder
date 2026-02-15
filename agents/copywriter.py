@@ -1,10 +1,21 @@
 """
 Copywriter Agent
 ================
-Conversion-optimized website copy generation.
+Conversion-optimized website copy generation with multi-language support.
 """
 
 from agents.base import BaseAgent
+
+# Supported languages with their writing direction
+SUPPORTED_LANGUAGES = {
+    "en": {"name": "English", "dir": "ltr"},
+    "he": {"name": "Hebrew", "dir": "rtl"},
+    "ar": {"name": "Arabic", "dir": "rtl"},
+    "es": {"name": "Spanish", "dir": "ltr"},
+    "fr": {"name": "French", "dir": "ltr"},
+    "de": {"name": "German", "dir": "ltr"},
+    "ru": {"name": "Russian", "dir": "ltr"},
+}
 
 
 class CopywriterAgent(BaseAgent):
@@ -43,8 +54,20 @@ IMPORTANT RULES:
     def build_user_prompt(self, user_input: str, **kwargs) -> str:
         strategy = kwargs.get("strategy", "")
         sections = kwargs.get("sections", [])
+        language = kwargs.get("language", "en")
+
+        lang_info = SUPPORTED_LANGUAGES.get(language, SUPPORTED_LANGUAGES["en"])
 
         prompt = f"Here is the strategic brief:\n\n{strategy}"
         if sections:
             prompt += f"\n\nInclude these sections: {', '.join(sections)}"
+
+        if language != "en":
+            prompt += (
+                f"\n\n⚠️ IMPORTANT: Write ALL content in **{lang_info['name']}**. "
+                f"Text direction is **{lang_info['dir'].upper()}**. "
+                f"Adapt the tone and cultural references for a {lang_info['name']}-speaking audience."
+            )
+
         return prompt
+
