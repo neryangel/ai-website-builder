@@ -31,6 +31,25 @@ from config import TEMPLATES, MAX_AUTO_FIX_ITERATIONS
 
 logger = logging.getLogger(__name__)
 
+# Sensible design defaults when Art Director fails
+DEFAULT_DESIGN = {
+    "primary_color": "#667eea",
+    "secondary_color": "#764ba2",
+    "background_color": "#ffffff",
+    "text_color": "#1a202c",
+    "accent_color": "#ed8936",
+    "surface_color": "#f7fafc",
+    "font_style": "Sans-serif",
+    "heading_font": "Inter",
+    "body_font": "Inter",
+    "border_radius": "medium",
+    "shadow_style": "subtle",
+    "gradient_direction": "135deg",
+    "gradient_from": "#667eea",
+    "gradient_to": "#764ba2",
+    "overall_mood": "modern professional",
+}
+
 
 @dataclass
 class PipelineStage:
@@ -180,9 +199,13 @@ class BuildPipeline:
                 return result
 
             if not design_result.success:
+                # Partial success: use default design instead of aborting
+                logger.warning(
+                    "Art Director failed: %s — using default design tokens",
+                    design_result.error,
+                )
                 self._update_stage("Art Director", "error")
-                result.error = f"Art Director failed: {design_result.error}"
-                return result
+                design_result.parsed_output = DEFAULT_DESIGN
 
             result.copy = copy_result.parsed_output
             result.design_json = design_result.parsed_output
@@ -242,7 +265,7 @@ class BuildPipeline:
                 reviewer = self._create_agent(ReviewerAgent, "Reviewer")
 
                 for fix_iteration in range(self.max_fix_iterations):
-                    logger.info(f"Auto-Fix iteration {fix_iteration + 1}/{self.max_fix_iterations}")
+                    logger.info("Auto-Fix iteration %d/%d", fix_iteration + 1, self.max_fix_iterations)
 
                     review_result = reviewer.run(
                         "",
@@ -254,7 +277,7 @@ class BuildPipeline:
                     result.total_cost_usd += review_result.total_cost_usd
 
                     if not review_result.success:
-                        logger.warning(f"Review failed on iteration {fix_iteration + 1}")
+                        logger.warning("Review failed on iteration %d", fix_iteration + 1)
                         break
 
                     review_report = review_result.parsed_output
@@ -263,7 +286,7 @@ class BuildPipeline:
 
                     # Check if passed
                     if review_report.get("pass", False):
-                        logger.info(f"Review passed with score {review_report.get('score', 'N/A')}")
+                        logger.info("Review passed with score %s", review_report.get('score', 'N/A'))
                         break
 
                     # If not passed, get the critical issues and send back to developer
@@ -339,7 +362,7 @@ No explanations, no markdown code fences.
                     result=seo_result, duration_ms=seo_result.total_latency_ms,
                 ))
             else:
-                logger.warning(f"SEO Optimizer failed: {seo_result.error}. Using unoptimized HTML.")
+                logger.warning("SEO Optimizer failed: %s — using unoptimized HTML", seo_result.error)
                 stages.append(PipelineStage(
                     name="SEO Optimizer", agent_name="SEO Optimizer", status="error",
                     result=seo_result,
@@ -356,16 +379,15 @@ No explanations, no markdown code fences.
             result.total_duration_ms = (time.time() - pipeline_start) * 1000
 
             logger.info(
-                f"Pipeline complete: {result.total_tokens} tokens, "
-                f"${result.total_cost_usd:.4f}, "
-                f"{result.total_duration_ms:.0f}ms, "
-                f"{result.fix_iterations} fix iterations"
+                "Pipeline complete: %d tokens, $%.4f, %.0fms, %d fix iterations",
+                result.total_tokens, result.total_cost_usd,
+                result.total_duration_ms, result.fix_iterations,
             )
 
         except Exception as e:
             result.error = str(e)
             result.stages = stages
             result.total_duration_ms = (time.time() - pipeline_start) * 1000
-            logger.error(f"Pipeline error: {e}")
+            logger.error("Pipeline error: %s", e, exc_info=True)
 
         return result

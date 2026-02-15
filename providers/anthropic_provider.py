@@ -1,23 +1,27 @@
 """
 Anthropic Provider
 ==================
-Anthropic Claude API integration.
+Anthropic Claude API integration with rate limit handling.
 """
 
+import logging
 import time
 import anthropic
 from providers.base_provider import BaseProvider, ProviderResponse
 
+logger = logging.getLogger(__name__)
 
-# Approximate token costs (USD per 1K tokens)
+# Approximate token costs (USD per 1K tokens) — updated 2026
 ANTHROPIC_COSTS = {
     "claude-3-5-sonnet-20240620": {"input": 0.003, "output": 0.015},
+    "claude-3-5-haiku-20241022": {"input": 0.001, "output": 0.005},
     "claude-3-opus-20240229": {"input": 0.015, "output": 0.075},
+    "claude-sonnet-4-20250514": {"input": 0.003, "output": 0.015},
 }
 
 
 class AnthropicProvider(BaseProvider):
-    """Anthropic Claude provider."""
+    """Anthropic Claude provider with rate limit handling."""
 
     def __init__(self, api_key: str, model: str = "claude-3-5-sonnet-20240620"):
         super().__init__(api_key, model)
@@ -36,13 +40,21 @@ class AnthropicProvider(BaseProvider):
     ) -> ProviderResponse:
         start = time.time()
 
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_input}],
-        )
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_input}],
+            )
+        except anthropic.RateLimitError as e:
+            logger.warning("Anthropic rate limit hit — waiting 30s")
+            time.sleep(30)
+            raise RuntimeError("Anthropic rate limit exceeded. Please wait and try again.") from e
+        except anthropic.AuthenticationError as e:
+            raise RuntimeError("Invalid Anthropic API key. Please check your key.") from e
+
         latency = (time.time() - start) * 1000
 
         input_tokens = getattr(response.usage, "input_tokens", 0) if response.usage else 0

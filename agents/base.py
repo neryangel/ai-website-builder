@@ -9,13 +9,17 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 from providers import PROVIDER_MAP
 from providers.base_provider import ProviderResponse
 
 logger = logging.getLogger(__name__)
 
+
+# ─────────────────────────────────────────────
+# Agent Result
+# ─────────────────────────────────────────────
 
 @dataclass
 class AgentResult:
@@ -31,6 +35,14 @@ class AgentResult:
     total_cost_usd: float = 0.0
     total_latency_ms: float = 0.0
 
+    @property
+    def duration_seconds(self) -> float:
+        return self.total_latency_ms / 1000
+
+
+# ─────────────────────────────────────────────
+# Base Agent
+# ─────────────────────────────────────────────
 
 class BaseAgent(ABC):
     """
@@ -38,9 +50,10 @@ class BaseAgent(ABC):
     
     Features:
     - Automatic retry with exponential backoff
-    - Structured output parsing & validation
+    - Structured output parsing & validation with graceful fallback
     - Token counting & cost tracking
-    - Detailed logging
+    - Configurable timeout
+    - Progress callbacks for UI updates
     """
 
     def __init__(
@@ -51,6 +64,7 @@ class BaseAgent(ABC):
         max_retries: int = 3,
         temperature: float = 0.7,
         max_tokens: int = 8192,
+        timeout_seconds: float = 120.0,
     ):
         self.provider_name = provider
         self.model = model
@@ -58,11 +72,12 @@ class BaseAgent(ABC):
         self.max_retries = max_retries
         self.temperature = temperature
         self.max_tokens = max_tokens
+        self.timeout_seconds = timeout_seconds
 
         # Initialize the provider
         provider_class = PROVIDER_MAP.get(provider)
         if not provider_class:
-            raise ValueError(f"Unknown provider: {provider}")
+            raise ValueError(f"Unknown provider: {provider}. Available: {list(PROVIDER_MAP.keys())}")
         self.provider = provider_class(api_key=api_key, model=model)
 
     @property
@@ -100,9 +115,19 @@ class BaseAgent(ABC):
         """
         return user_input
 
-    def run(self, user_input: str, **kwargs) -> AgentResult:
+    def run(
+        self,
+        user_input: str,
+        on_progress: Optional[Callable[[str], None]] = None,
+        **kwargs,
+    ) -> AgentResult:
         """
         Execute the agent with retry logic, parsing, and validation.
+        
+        Args:
+            user_input: The primary input text
+            on_progress: Optional callback for progress updates (e.g., for UI)
+            **kwargs: Additional context passed to build_user_prompt
         """
         user_prompt = self.build_user_prompt(user_input, **kwargs)
         total_input_tokens = 0
@@ -113,7 +138,13 @@ class BaseAgent(ABC):
 
         for attempt in range(1, self.max_retries + 1):
             try:
-                logger.info(f"[{self.name}] Attempt {attempt}/{self.max_retries} via {self.provider_name}/{self.model}")
+                logger.info(
+                    "[%s] Attempt %d/%d via %s/%s",
+                    self.name, attempt, self.max_retries,
+                    self.provider_name, self.model,
+                )
+                if on_progress:
+                    on_progress(f"Attempt {attempt}/{self.max_retries}...")
 
                 # Call the provider
                 response: ProviderResponse = self.provider.generate(
@@ -128,14 +159,21 @@ class BaseAgent(ABC):
                 total_cost += response.cost_usd
                 total_latency += response.latency_ms
 
-                # Parse the output
-                parsed = self.parse_output(response.text)
+                # Parse the output (with graceful fallback)
+                try:
+                    parsed = self.parse_output(response.text)
+                except Exception as parse_err:
+                    logger.warning(
+                        "[%s] Parse failed: %s — using raw text as fallback",
+                        self.name, parse_err
+                    )
+                    parsed = response.text  # Graceful fallback
 
                 # Validate
                 is_valid, error_msg = self.validate_output(parsed)
                 if not is_valid:
                     last_error = f"Validation failed: {error_msg}"
-                    logger.warning(f"[{self.name}] {last_error}")
+                    logger.warning("[%s] %s", self.name, last_error)
                     if attempt < self.max_retries:
                         # Add error context to next attempt
                         user_prompt = (
@@ -143,9 +181,10 @@ class BaseAgent(ABC):
                             f"CRITICAL: Your previous attempt had this issue: {error_msg}\n"
                             f"Please fix this and try again. Follow the instructions exactly."
                         )
-                        time.sleep(min(2 ** attempt, 8))  # Exponential backoff (max 8s)
+                        time.sleep(min(2 ** attempt, 8))
                         continue
                     else:
+                        # Return partial result instead of total failure
                         return AgentResult(
                             agent_name=self.name,
                             raw_text=response.text,
@@ -161,9 +200,11 @@ class BaseAgent(ABC):
 
                 # Success!
                 logger.info(
-                    f"[{self.name}] Success on attempt {attempt} "
-                    f"({response.input_tokens}+{response.output_tokens} tokens, "
-                    f"${response.cost_usd:.4f}, {response.latency_ms:.0f}ms)"
+                    "[%s] ✅ Success on attempt %d "
+                    "(%d+%d tokens, $%.4f, %.0fms)",
+                    self.name, attempt,
+                    response.input_tokens, response.output_tokens,
+                    response.cost_usd, response.latency_ms,
                 )
 
                 return AgentResult(
@@ -180,9 +221,14 @@ class BaseAgent(ABC):
 
             except Exception as e:
                 last_error = str(e)
-                logger.error(f"[{self.name}] Attempt {attempt} failed: {last_error}")
+                logger.error(
+                    "[%s] Attempt %d failed: %s",
+                    self.name, attempt, last_error,
+                )
                 if attempt < self.max_retries:
-                    time.sleep(min(2 ** attempt, 8))
+                    backoff = min(2 ** attempt, 8)
+                    logger.info("[%s] Retrying in %ds...", self.name, backoff)
+                    time.sleep(backoff)
                     continue
 
         # All retries exhausted

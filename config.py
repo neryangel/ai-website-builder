@@ -4,8 +4,24 @@ Configuration & Model Registry
 Centralized configuration for the AI Website Builder.
 """
 
+import os
 from dataclasses import dataclass, field
 from typing import Optional
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+# ─────────────────────────────────────────────
+# API Key Defaults (from environment)
+# ─────────────────────────────────────────────
+
+DEFAULT_API_KEYS = {
+    "Gemini": os.environ.get("GOOGLE_API_KEY", ""),
+    "OpenAI": os.environ.get("OPENAI_API_KEY", ""),
+    "Anthropic": os.environ.get("ANTHROPIC_API_KEY", ""),
+}
 
 # ─────────────────────────────────────────────
 # Model Registry
